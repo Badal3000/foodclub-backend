@@ -22,7 +22,6 @@ const foodSchema = new mongoose.Schema({
         default:true
     },
     image: {
-        type: String,
         imgUrl: {
             type: String,
             default: 'https://img.freepik.com/premium-photo/food-item-background-wallpaper_492154-7058.jpg?w=900'

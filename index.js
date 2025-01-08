@@ -1,18 +1,22 @@
 const dotenv = require("dotenv");
 dotenv.config();
+
+
 const express = require('express');
 const { connectMongoDb } = require('./utils/connections');
 const server = express();
+
+
 let PORT = process.env.PORT || 5050;
 const userRouter = require("./routes/user"); 
 const foodRouter = require("./routes/food")
 const http = require('http');
 const cookieParser = require("cookie-parser");
 const { checkAuth } = require("./middlewares/auth");
-const foodItems = require("./fooditems");
+// const foodItems = require("./fooditems");
 const cors = require('cors');
 server.use(express.json());
-server.use(cors);
+server.use(cors());
 
 // require("dotenv").config();
 
@@ -27,21 +31,21 @@ connectMongoDb("foodclub")
 
 
 
-server.use(express.json());
+// server.use(express.json());
 server.use(cookieParser());
 server.use (express.urlencoded({ extended: true }));
 
 
 server.use("/user", userRouter)
-server.use(checkAuth);
+// server.use(checkAuth);
 server.use("/food", foodRouter);    
 server.get('/', (req, res) => {
     res.send('welcome to foodclub');
 });
 
-server.get('/foodItems', (req, res) => {
-    res.json(foodItems);
-})
+// server.get('/foodItems', (req, res) => {
+//     res.json(foodItems);
+// })
 
 
 const myserver = http.createServer(server);

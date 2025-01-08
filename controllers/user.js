@@ -1,58 +1,87 @@
-// const { getToken } = require("../../todo/utils/auth");
+const bcrypt = require('bcrypt');
 const user = require("../models/users");
-const {generateToken, hashPassword, comparePassword} = require("../utils/hash");
+const { generateToken } = require("../utils/auth");
+const { hashPassword } = require("../utils/hash");
 
+exports.signUpUser = (req, res) => {
+    const { fullname, username, password: userPassword, email } = req.body;
 
+    // Hash the password before saving
+    hashPassword(userPassword).then((hashedPassword) => {
+        user.create({ fullname, username, password: hashedPassword, email })
+            .then((newUser) => {
+                const token = generateToken(newUser); 
 
-exports.signUpUser = (req, res) =>{
-    const {fullname, username, password: userPassword, email} = req.body;
-    const password = hashPassword(userPassword);
-    user.create({ fullname, username, password, email})
-    .then((data) => {
-        res.status(201).send({
-            user,
-            status: "success",
-            message: "User created successfully"
+                res.cookie('token', token, { 
+                    httpOnly: true, 
+                    secure: false,  // Set to true if using HTTPS in production
+                    maxAge: 7 * 24 * 60 * 60 * 1000 
+                });
+
+                res.status(201).send({
+                    user: {
+                        _id: newUser._id,
+                        fullname: newUser.fullname,
+                        username: newUser.username,
+                        email: newUser.email,
+                        role: newUser.role,
+                    },
+                    token,
+                    status: "success",
+                    message: "User created successfully"
+                });
+            })
+            .catch((err) => {
+                res.status(400).send({
+                    message: "Error creating user",
+                    error: err.message || err
+                });
+            });
+    }).catch((err) => {
+        res.status(500).send({
+            message: "Error hashing password",
+            error: err.message || err
         });
-    })
-    .catch((err) => {
-        res.status(400).send({message: " Error creating user", ...err});
     });
-
-    
 };
+
 exports.loginUser = (req, res) => {
-    const {username, password} = req.body;
-    console.log(req.body)
-    user.find({username}).then( (user) => {
-        if(!user || user.length === 0) {
-            return res.status(401).send({message: "user not found"});
-        }
-        const isPasswordValid = comparePassword(password, user[0].password);
-        if(!isPasswordValid) {
-            return res.status(401).send({message: "Invalid password"});
-        }
-        res.send(user);
-        const token = getToken(user[0]);
-        const expires = new Date(Date.now() + 7 * 24 * 60 *60 * 1000);
-        return res.status(200).cookie("token", token, {
-            httpOnly: true,
-            secure: false,
-            sameSite: "Lax",
-            priority: "High",
-            maxAge: expires.getTime() - Date.now(),
-            expires,
-        })
-        .send({
-            token,
-            status: "success",
-            message: "User logged in successfully",
-        })
+    const { username, password } = req.body;
+    console.log(req.body);
 
-    })
-    .catch((err) => {
+    // Find the user by username
+    user.findOne({ username }).then((user) => {
+        if (!user) {
+            return res.status(401).send({ message: "User not found" });
+        }
+
+        // Compare the provided password with the stored hashed password
+        bcrypt.compare(password, user.password, (err, isPasswordValid) => {
+            if (err) {
+                return res.status(500).send({ message: "Error comparing passwords", error: err });
+            }
+
+            if (!isPasswordValid) {
+                return res.status(401).send({ message: "Invalid password" });
+            }
+
+            // Generate a token for the authenticated user
+            const token = generateToken(user);
+            const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+            res.status(200).cookie("token", token, {
+                httpOnly: true,
+                secure: false,
+                maxAge: expires.getTime() - Date.now(),
+                expires,
+            }).send({
+                token,
+                status: "success",
+                message: "User logged in successfully",
+            });
+        });
+    }).catch((err) => {
         console.log(err);
-        res.status(400).send({message: "Error logging in user", ...err});
+        res.status(400).send({ message: "Error logging in user", error: err });
     });
-
 };

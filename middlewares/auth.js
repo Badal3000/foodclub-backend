@@ -1,5 +1,6 @@
 
 const {verifyToken} = require("../utils/auth");
+const user = require("../models/users")
 
 exports.checkAuth = (req, res, next) => {
     const cookieToken = req.cookies.token ?? "";
