@@ -1,4 +1,4 @@
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 
 exports.hashPassword = (password) =>{
     return bcrypt.hashSync(password, Number(process.env.SALT_ROUNDS) || 10);
